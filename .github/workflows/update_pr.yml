@@ -1,23 +1,25 @@
-name: Codex CI Build
+name: Update PR Description
 
 on:
   pull_request:
     types:
       - synchronize
-      - opened
-      - reopened
-    branches:
-      - beta
-      - main
-  push:
-    branches:
-      - main
 
 jobs:
-  UpdateRolloutPR:
+  update-description:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Fetch Commits
+        id: commits
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          TOKEN=${{ secrets.GITHUB_TOKEN }}
+          COMMITS=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/commits" | jq -r '.[].commit.message')
+          echo "::set-output name=commit-messages::$COMMITS"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update PR Description
         uses: actions/github-script@v6
         with:
@@ -28,10 +30,10 @@ jobs:
             const owner = context.repo.owner;
             const commitMessages = core.getInput('commit-messages');
             const issueReferences = [];
-            const regex = /manoharup03\/skills-test-with-actions\/issues\/(\d+)/g;
+            const regex = /urbanpiper\/issues-codex\/issues\/(\d+)/g;
             const matches = commitMessages.match(regex);
             if (matches) {
-              issueReferences.push(...matches.map(match => `manoharup03/skills-test-with-actions/issues/${match.split("/")[1]}`));
+              issueReferences.push(...matches.map(match => `urbanpiper/issues-codex/issues/${match.split("/")[1]}`));
             }
 
             const pr = await github.pulls.get({
@@ -49,4 +51,3 @@ jobs:
               pull_number: prNumber,
               body: newDescription,
             });
-

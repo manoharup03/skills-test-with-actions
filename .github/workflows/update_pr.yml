@@ -1,0 +1,52 @@
+name: Codex CI Build
+
+on:
+  pull_request:
+    types:
+      - synchronize
+      - opened
+      - reopened
+    branches:
+      - beta
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  UpdateRolloutPR:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update PR Description
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const repo = context.repo.repo;
+            const owner = context.repo.owner;
+            const commitMessages = core.getInput('commit-messages');
+            const issueReferences = [];
+            const regex = /urbanpiper\/issues-codex\/issues\/(\d+)/g;
+            const matches = commitMessages.match(regex);
+            if (matches) {
+              issueReferences.push(...matches.map(match => `urbanpiper/issues-codex/issues/${match.split("/")[1]}`));
+            }
+
+            const pr = await github.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            const currentDescription = pr.data.body || '';
+            const newDescription = `${currentDescription}\n\nIssue references: ${issueReferences.join(', ')}`;
+
+            await github.pulls.update({
+              owner,
+              repo,
+              pull_number: prNumber,
+              body: newDescription,
+            });
+

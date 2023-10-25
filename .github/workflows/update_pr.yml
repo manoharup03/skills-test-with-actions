@@ -28,10 +28,10 @@ jobs:
             const owner = context.repo.owner;
             const commitMessages = core.getInput('commit-messages');
             const issueReferences = [];
-            const regex = /urbanpiper\/issues-codex\/issues\/(\d+)/g;
+            const regex = /manoharup03\/skills-test-with-actions\/issues\/(\d+)/g;
             const matches = commitMessages.match(regex);
             if (matches) {
-              issueReferences.push(...matches.map(match => `urbanpiper/issues-codex/issues/${match.split("/")[1]}`));
+              issueReferences.push(...matches.map(match => `manoharup03/skills-test-with-actions/issues/${match.split("/")[1]}`));
             }
 
             const pr = await github.pulls.get({

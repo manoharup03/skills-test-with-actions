@@ -23,14 +23,8 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            const octokit = require('@octokit/rest')();
-            octokit.authenticate({
-                type: 'token',
-                token: process.env.GITHUB_TOKEN,
-            });
-
-            // Fetch commit messages to extract issue numbers
-            const commits = await octokit.pulls.listCommits({
+            // Fetch commit messages to extract issue numbers using the github context
+            const commits =  await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/commits'{
                 owner: owner,
                 repo: repo,
                 pull_number: prNumber,
@@ -56,11 +50,9 @@ jobs:
             const issueReferences = issueNumbersList.map(issueNumber => `- fixes ${issueNumber}`).join('\n');
 
             // Update the PR body
-            const prUpdateData = {
-                owner: owner,
-                repo: repo,
+            await github.request('PATCH /repos/{owner}/{repo}/pulls/{pull_number}', {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
                 pull_number: prNumber,
                 body: issueReferences,
-            };
-
-            await octokit.pulls.update(prUpdateData);
+            });

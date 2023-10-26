@@ -12,6 +12,8 @@ on:
 jobs:
   update-description:
     runs-on: ubuntu-latest
+    # Run only when PR title contains rollout.
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, 'rollout')
 
     steps:
       - name: Update PR Body

@@ -1,0 +1,57 @@
+name: Update PR Body
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  update-description:
+    runs-on: ubuntu-latest
+    # Run only when PR title contains rollout.
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, 'rollout')
+
+    steps:
+      - name: Update PR Body
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Fetch commit messages to extract issue numbers using the github context
+            const commits =  await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/commits', {
+                owner: owner,
+                repo: repo,
+                pull_number: prNumber,
+            });
+
+            const issueNumbers = new Set();
+            const issueRegex = /manoharup03\/skills-test-with-actions\/issues\/(\d+)/g;
+
+            commits.data.forEach(commit => {
+                const message = commit.commit.message;
+                const matches = message.match(issueRegex);
+
+                if (matches) {
+                    matches.forEach(match => {
+                        // Extract the issue number and add it to the Set
+                        issueNumbers.add(match);
+                    });
+                }
+            });
+
+            // Generate the body with a list of issue references
+            const issueNumbersList = Array.from(issueNumbers);
+            const issueReferences = issueNumbersList.map(issueNumber => `- fixes ${issueNumber}`).join('\n');
+
+            // Update the PR body
+            await github.request('PATCH /repos/{owner}/{repo}/pulls/{pull_number}', {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                body: issueReferences,
+            });

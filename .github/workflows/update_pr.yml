@@ -24,7 +24,7 @@ jobs:
             const repo = context.repo.repo;
 
             // Fetch commit messages to extract issue numbers using the github context
-            const commits =  await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/commits'{
+            const commits =  await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/commits', {
                 owner: owner,
                 repo: repo,
                 pull_number: prNumber,

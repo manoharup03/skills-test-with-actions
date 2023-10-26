@@ -1,4 +1,4 @@
-name: Update PR Description
+name: Update PR Body
 
 on:
   pull_request:
@@ -6,55 +6,61 @@ on:
       - synchronize
   push:
     branches:
-      - '**' # Replace with the branch name(s) you want to trigger on
+      - beta
+      - main
 
 jobs:
   update-description:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3 
-
-      - name: Fetch Commit Messages
-        id: commits
-        run: |
-          BRANCH_NAME=${{ github.ref }}
-          TOKEN=${{ secrets.GITHUB_TOKEN }}
-          COMMITS=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/${{ github.repository }}/commits?sha=$BRANCH_NAME" | jq -r '.[].commit.message')
-          echo "::set-output name=commit-messages::$COMMITS"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update PR Description
+      - name: Update PR Body
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = context.payload.pull_request.number;
-            const repo = context.repo.repo;
             const owner = context.repo.owner;
-            const commitMessages = core.getInput('commit-messages');
-            const issueReferences = [];
-            const regex = /manoharup03\/skills-test-with-actions\/issues\/(\d+)/g;
-            const matches = commitMessages.match(regex);
-            if (matches) {
-              issueReferences.push(...matches.map(match => `manoharup03/skills-test-with-actions/issues/${match.split("/")[1]}`));
-            }
+            const repo = context.repo.repo;
 
-            const pr = await github.pulls.get({
-              owner,
-              repo,
-              pull_number: prNumber,
+            const octokit = require('@octokit/rest')();
+            octokit.authenticate({
+                type: 'token',
+                token: process.env.GITHUB_TOKEN,
             });
 
-            const currentDescription = pr.data.body || '';
-            const newDescription = `${currentDescription}\n\nIssue references: ${issueReferences.join(', ')}`;
-
-            await github.pulls.update({
-              owner,
-              repo,
-              pull_number: prNumber,
-              body: newDescription,
+            // Fetch commit messages to extract issue numbers
+            const commits = await octokit.pulls.listCommits({
+                owner: owner,
+                repo: repo,
+                pull_number: prNumber,
             });
+
+            const issueNumbers = new Set();
+            const issueRegex = /manoharup03\/skills-test-with-actions\/issues\/(\d+)/g;
+
+            commits.data.forEach(commit => {
+                const message = commit.commit.message;
+                const matches = message.match(issueRegex);
+
+                if (matches) {
+                    matches.forEach(match => {
+                        // Extract the issue number and add it to the Set
+                        issueNumbers.add(match);
+                    });
+                }
+            });
+
+            // Generate the body with a list of issue references
+            const issueNumbersList = Array.from(issueNumbers);
+            const issueReferences = issueNumbersList.map(issueNumber => `- fixes ${issueNumber}`).join('\n');
+
+            // Update the PR body
+            const prUpdateData = {
+                owner: owner,
+                repo: repo,
+                pull_number: prNumber,
+                body: issueReferences,
+            };
+
+            await octokit.pulls.update(prUpdateData);

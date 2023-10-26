@@ -3,11 +3,8 @@ name: Update PR Body
 on:
   pull_request:
     types:
+      - opened
       - synchronize
-  push:
-    branches:
-      - beta
-      - main
 
 jobs:
   update-description:
